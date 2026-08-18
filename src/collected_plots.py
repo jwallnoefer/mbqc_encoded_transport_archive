@@ -78,7 +78,7 @@ def plot_encoded_transport_poster(path_prefix="."):
     plt.grid()
     plt.legend()
     plt.ylabel("Fidelity")
-    plt.xlabel("diagonal distance")
+    plt.xlabel(r"diagonal distance $l$")
     plt.savefig(
         os.path.join(path_prefix, "encoded_vs_direct_by_distance_poster.pdf"),
         bbox_inches="tight",
@@ -92,7 +92,7 @@ def plot_encoded_transport_poster(path_prefix="."):
     for dist, color in zip(distances, colors):
         y2 = [run_modularized(dist, p) for p in ps]
         y4 = [run_simulated_direct(dist, p) for p in ps]
-        plt.plot(epsilons, y2, ls="solid", color=color, label=f"{dist=}")
+        plt.plot(epsilons, y2, ls="solid", color=color, label=f"$l$={dist}")
         plt.plot(epsilons, y4, ls="dotted", color=color)
 
     plt.grid()
@@ -153,7 +153,7 @@ def plot_chained_poster(output_path="encoded_chained_poster.pdf"):
     plt.grid()
     plt.legend()
     plt.ylabel("Fidelity")
-    plt.xlabel("diagonal distance")
+    plt.xlabel(r"diagonal distance $l$")
     plt.savefig(output_path, bbox_inches="tight")
     # plt.show()
     plt.cla()
@@ -192,7 +192,7 @@ def plot_encoded_transport_variant_1(path_prefix="."):
     plt.grid()
     plt.legend()
     plt.ylabel("Fidelity")
-    plt.xlabel("diagonal distance")
+    plt.xlabel(r"diagonal distance $l$")
     plt.savefig(
         os.path.join(path_prefix, "encoded_vs_direct_by_distance_variant1.pdf"),
         bbox_inches="tight",
@@ -206,7 +206,7 @@ def plot_encoded_transport_variant_1(path_prefix="."):
     for dist, color in zip(distances, colors):
         y2 = [run_modularized(dist, p) for p in ps]
         y4 = [run_simulated_direct(dist, p) for p in ps]
-        plt.plot(epsilons, y2, ls="solid", color=color, label=f"{dist=}")
+        plt.plot(epsilons, y2, ls="solid", color=color, label=f"$l$={dist}")
         plt.plot(epsilons, y4, ls="dotted", color=color)
 
     plt.grid()
@@ -250,7 +250,7 @@ def plot_encoded_transport_variant_2(path_prefix="."):
     plt.grid()
     plt.legend()
     plt.ylabel("Fidelity")
-    plt.xlabel("diagonal distance")
+    plt.xlabel(r"diagonal distance $l$")
     plt.savefig(
         os.path.join(path_prefix, "encoded_vs_direct_by_distance_variant2.pdf"),
         bbox_inches="tight",
@@ -264,7 +264,7 @@ def plot_encoded_transport_variant_2(path_prefix="."):
     for dist, color in zip(distances, colors):
         y1 = [run_alternative_modularized(dist - 5, p) for p in ps]
         y4 = [run_simulated_direct(dist, p) for p in ps]
-        plt.plot(epsilons, y1, ls="solid", color=color, label=f"{dist=}")
+        plt.plot(epsilons, y1, ls="solid", color=color, label=f"$l$={dist}")
         plt.plot(epsilons, y4, ls="dotted", color=color)
 
     plt.grid()
@@ -313,7 +313,7 @@ def plot_encoded_transport_both_variants(path_prefix="."):
     plt.grid()
     plt.legend()
     plt.ylabel("Fidelity")
-    plt.xlabel("diagonal distance")
+    plt.xlabel(r"diagonal distance $l$")
     plt.savefig(
         os.path.join(path_prefix, "encoded_vs_direct_by_distance_both_variants.pdf"),
         bbox_inches="tight",
@@ -328,7 +328,7 @@ def plot_encoded_transport_both_variants(path_prefix="."):
         y1 = [run_alternative_modularized(dist - 5, p) for p in ps]
         y2 = [run_modularized(dist, p) for p in ps]
         y4 = [run_simulated_direct(dist, p) for p in ps]
-        plt.plot(epsilons, y2, ls="solid", color=color, label=f"{dist=}")
+        plt.plot(epsilons, y2, ls="solid", color=color, label=f"$l$={dist}")
         plt.plot(epsilons, y1, ls="dashed", color=color)
         plt.plot(epsilons, y4, ls="dotted", color=color)
 
@@ -374,7 +374,7 @@ def plot_uncorrectable(output_path="uncorrectable.pdf"):  # do we need this?
             epsilons,
             [1 - x for x in res_simulated],
             c=color,
-            label=f"{dist=}",
+            label=f"$l$={dist}",
         )
         plt.plot(epsilons, [1 - x for x in res_direct], ls="dotted", c=color)
     res_corrected = [
@@ -441,7 +441,7 @@ def plot_chained(path_prefix="."):
     plt.grid()
     plt.legend()
     plt.ylabel("Fidelity")
-    plt.xlabel("diagonal distance")
+    plt.xlabel(r"diagonal distance $l$")
     plt.savefig(
         os.path.join(path_prefix, "encoded_chained_by_distance.pdf"),
         bbox_inches="tight",
@@ -473,7 +473,7 @@ def plot_chained(path_prefix="."):
             y1,
             ls="solid",
             color=color,
-            label=f"{dist=}",
+            label=f"$l$={dist}",
         )
         plt.plot(epsilons, y2, ls="dashed", color=color)
         plt.plot(epsilons, y3, ls="dashdot", color=color)
@@ -555,7 +555,7 @@ def plot_concatenated(path_prefix="."):
     plt.grid()
     plt.legend()
     plt.ylabel("Fidelity")
-    plt.xlabel("diagonal distance")
+    plt.xlabel(r"diagonal distance $l$")
     plt.savefig(
         os.path.join(path_prefix, "encoded_concatenated_by_distance.pdf"),
         bbox_inches="tight",
@@ -666,7 +666,7 @@ def plot_concatenated_chained(path_prefix="."):
     plt.grid()
     plt.legend()
     plt.ylabel("Fidelity")
-    plt.xlabel("diagonal distance")
+    plt.xlabel(r"diagonal distance $l$")
     plt.savefig(
         os.path.join(path_prefix, "encoded_chained_concatenated_by_distance.pdf"),
         bbox_inches="tight",
@@ -708,7 +708,7 @@ def plot_reassigning_error_syndromes(path_prefix="."):
     plt.grid()
     plt.legend()
     plt.ylabel("Fidelity")
-    plt.xlabel("diagonal distance")
+    plt.xlabel(r"diagonal distance $l$")
     plt.xlim(0, 128 + 2)
     plt.savefig(
         os.path.join(
@@ -726,7 +726,7 @@ def plot_reassigning_error_syndromes(path_prefix="."):
         y1 = [run_modularized(dist, p) for p in ps]
         y2 = [run_modularized(dist, p, correction_strategy="standard") for p in ps]
         y4 = [run_simulated_direct(dist, p) for p in ps]
-        plt.plot(epsilons, y1, ls="solid", color=color, label=f"{dist=}")
+        plt.plot(epsilons, y1, ls="solid", color=color, label=f"$l$={dist}")
         plt.plot(epsilons, y2, ls="dashed", color=color)
         plt.plot(epsilons, y4, ls="dotted", color=color)
 
@@ -840,7 +840,7 @@ def plot_concatenation_strategies(path_prefix="."):
     plt.grid()
     plt.legend()
     plt.ylabel("Fidelity")
-    plt.xlabel("diagonal distance")
+    plt.xlabel(r"diagonal distance $l$")
     plt.savefig(
         os.path.join(path_prefix, "concatenated_strategy_comparison.pdf"),
         bbox_inches="tight",
@@ -858,14 +858,14 @@ if __name__ == "__main__":
     # plot_chained_poster(os.path.join(plots_directory, "encoded_chained_poster.pdf"))
 
     # cheese_crab(os.path.join(plots_directory, "cheese_crab.pdf"))
-    # plot_encoded_transport_variant_1(plots_directory)
-    # plot_encoded_transport_variant_2(plots_directory)
+    plot_encoded_transport_variant_1(plots_directory)
+    plot_encoded_transport_variant_2(plots_directory)
     plot_encoded_transport_both_variants(plots_directory)
-    # plot_chained(plots_directory)
-    # plot_uncorrectable(os.path.join(plots_directory, "uncorrectable.pdf"))
+    plot_chained(plots_directory)
+    plot_uncorrectable(os.path.join(plots_directory, "uncorrectable.pdf"))
     plot_concatenated(path_prefix=plots_directory)
     plot_concatenated_chained(path_prefix=plots_directory)
-    # plot_reassigning_error_syndromes(plots_directory)
-    # plot_concatenation_strategies(plots_directory)
+    plot_reassigning_error_syndromes(plots_directory)
+    plot_concatenation_strategies(plots_directory)
 
     pass
