@@ -16,7 +16,7 @@ import noisy_graph_states.libs.graph as gt
 import noisy_graph_states.libs.matrix as mat
 import os
 
-# color-blind friendly color schmees from https://sronpersonalpages.nl/~pault/
+# color-blind friendly color schemes from https://sronpersonalpages.nl/~pault/
 HIGH_CONTRAST_COLORS = (
     "#004488",
     "#DDAA33",
@@ -162,6 +162,7 @@ def plot_chained_poster(output_path="encoded_chained_poster.pdf"):
 def cheese_crab(output_path="cheese_crab.pdf"):
     # plot the full protocol visualisation up to the final decoding measurements
     run_encoded(6, 0.99, save_strategy_plot_path=output_path)
+    plt.cla()
 
 
 def plot_encoded_transport_variant_1(path_prefix="."):
@@ -306,9 +307,6 @@ def plot_encoded_transport_both_variants(path_prefix="."):
         )
         plt.plot(distances, y1, ls="dashed", color=color)
         plt.plot(distances, y4, ls="dotted", color=color)
-        # if p == 0.997:
-        #     print(distances)
-        #     print(np.array(y3)-np.array(y4))
 
     plt.grid()
     plt.legend()
@@ -346,11 +344,10 @@ def plot_encoded_transport_both_variants(path_prefix="."):
     plt.cla()
 
 
-def plot_uncorrectable(output_path="uncorrectable.pdf"):  # do we need this?
+def plot_uncorrectable(output_path="uncorrectable.pdf"):
     # we have identified which initial errors lead to uncorrectable errors
     # we verify this by looking at very small error rates and see that our prediction
     # of the uncorrectable errors matches what we get from the full protocol
-    # distances = [6, 8, 10, 12, 14, 16]
     distances = [8, 32, 128]
     epsilons = np.logspace(-1.7, -6.1, num=80)
 
@@ -579,8 +576,9 @@ def plot_concatenated_chained(path_prefix="."):
     epsilons = np.logspace(0, -3.2, num=80)
     ps = 1 - epsilons
     concatenation_levels = [0, 1, 2, 3, 4, 5, 6]
+    print("Starting calculation on plot_concatenated_chained by errors.")
     for cl, color in zip(concatenation_levels, colors):
-        print(cl)
+        print(f"Working on concatenation level {cl}.")
         y1 = [
             run_concatenated(
                 diagonal_distance, noise_parameter=p, concatenation_levels=cl
@@ -629,8 +627,9 @@ def plot_concatenated_chained(path_prefix="."):
     distances = np.arange(36, 300, 6, dtype=int)
     p = 0.995
     concatenation_levels = [0, 1, 2, 3, 4, 5, 6]
+    print("Starting calculation on plot_concatenated_chained by distances.")
     for cl, color in zip(concatenation_levels, colors):
-        print(cl)
+        print(f"Working on concatenation level {cl}.")
         y1 = [
             run_concatenated(
                 diagonal_distance, noise_parameter=p, concatenation_levels=cl
@@ -744,6 +743,11 @@ def plot_reassigning_error_syndromes(path_prefix="."):
 
 
 def plot_concatenation_strategies(path_prefix="."):
+    # This investigates whether the reassignment of some error syndromes
+    # is needed on the outer levels since we deal with a different noise
+    # pattern now.
+    # The short answer is you should still reassign the Y-error syndromes
+    # and not doing so is detrimental.
     colors = MEDIUM_CONTRAST_COLORS
 
     mpl.rcParams.update(
@@ -856,16 +860,16 @@ if __name__ == "__main__":
     ## pick which ones to plot
     # plot_encoded_transport_poster(path_prefix=plots_directory)
     # plot_chained_poster(os.path.join(plots_directory, "encoded_chained_poster.pdf"))
-
     # cheese_crab(os.path.join(plots_directory, "cheese_crab.pdf"))
-    plot_encoded_transport_variant_1(plots_directory)
-    plot_encoded_transport_variant_2(plots_directory)
-    plot_encoded_transport_both_variants(plots_directory)
-    plot_chained(plots_directory)
-    plot_uncorrectable(os.path.join(plots_directory, "uncorrectable.pdf"))
+
+    # plot_encoded_transport_variant_1(path_prefix=plots_directory)
+    # plot_encoded_transport_variant_2(path_prefix=plots_directory)
+    plot_encoded_transport_both_variants(path_prefix=plots_directory)
+    plot_chained(path_prefix=plots_directory)
     plot_concatenated(path_prefix=plots_directory)
     plot_concatenated_chained(path_prefix=plots_directory)
-    plot_reassigning_error_syndromes(plots_directory)
-    plot_concatenation_strategies(plots_directory)
+    plot_reassigning_error_syndromes(path_prefix=plots_directory)
+    # plot_concatenation_strategies(path_prefix=plots_directory)
+    plot_uncorrectable(output_path=os.path.join(plots_directory, "uncorrectable.pdf"))
 
     pass
