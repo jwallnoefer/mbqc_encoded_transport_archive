@@ -83,7 +83,6 @@ def perform_correction(
             if all(
                 [noise_part in combination for noise_part in filtered_noise]
             ) and all([combination_part in noise for combination_part in combination]):
-                # print("aaaaah")
                 new_noise = list(nsf.add_or_remove(to_flip, tuple(new_noise)))
         for idx in syndrome_indices:
             try:
@@ -106,7 +105,23 @@ def perform_correction(
     return new_state
 
 
-def get_code_directions(mirrored=False):
+def get_code_directions(mirrored: bool = False):
+    """Get a description of the embedded code state.
+
+    This is for variant 1 of the protocol.
+
+    Parameters
+    ----------
+    mirrored : bool, optional
+        If True, provide the directions for the top right decoding state instead.
+        Default: False
+
+    Returns
+    -------
+    dict
+        The description of the paths in a specific format.
+
+    """
     if mirrored:
         UP = DIRECTION_LEFT
         DOWN = DIRECTION_RIGHT
@@ -177,8 +192,24 @@ def get_code_directions(mirrored=False):
     }
 
 
-def get_alternative_code_directions(mirrored=False):
-    # this one has the input/output qubit outside
+def get_alternative_code_directions(mirrored: bool = False):
+    """Get a description of the embedded code state.
+
+    This is for variant 2 of the protocol, where the input/output qubit is at
+    the outside of the state.
+
+    Parameters
+    ----------
+    mirrored : bool, optional
+        If True, provide the directions for the top right decoding state instead.
+        Default: False
+
+    Returns
+    -------
+    dict
+        The description of the paths in a specific format.
+
+    """
     if mirrored:
         UP = DIRECTION_LEFT
         DOWN = DIRECTION_RIGHT
@@ -489,7 +520,6 @@ def run_encoded_simulated_distance(diagonal_distance, noise_parameter):
         + [DIRECTION_UP, DIRECTION_RIGHT] * (distance - 4)
         + reverse_directions(target_dirs["path1"])[:-1]
     )
-    # print(target_dirs["path1"])
     path1_start = get_idx_by_directions(start_idx, start_dirs["path1_start"], shape)
     path1_ids = idx_sequence_by_directions(
         start_idx=path1_start, directions=path1, shape=shape
@@ -537,28 +567,6 @@ def run_encoded_simulated_distance(diagonal_distance, noise_parameter):
 
     for path in [path1_ids, path2_ids, path3_ids, path4_ids, path5_ids]:
         seq += [("x", idx, start_idx) for idx in path]
-
-    # aux_strat = nsf.Strategy(start_graph, seq)
-    # weight_vector = aux_strat.get_weight_vector_expression()
-    #
-    # interest_set = [90,198,215,214,199,181,180]
-    # interest_set = list(sorted(interest_set))
-    # new_weight_vector = defaultdict(list)
-    #
-    # for k, v in weight_vector.items():
-    #     new_key = tuple()
-    #     for idx in interest_set:
-    #         if idx in k:
-    #             new_key += (idx,)
-    #     if new_key:
-    #         new_weight_vector[new_key] += v
-    #
-    # for k, v in new_weight_vector.items():
-    #     print(k, v)
-    #     if "x_58" in v:
-    #         print("aaaaaah")
-    # aux_strat.save()
-    # visualize.visualize_2d_cluster_end_state(aux_strat, shape)
 
     # do the final measurement
     seq += [
@@ -633,8 +641,7 @@ def run_encoded_simulated_distance(diagonal_distance, noise_parameter):
 
 # try to find out which noises cannot be suppressed
 def run_encoded_simulated_fully_corrected(noise_parameter, noise=None):
-    distance = 6
-    # additional_distance = diagonal_distance - distance
+    distance = 6  # since the overall distance does not contribute uncorrectable error we stick with the smallest setup
     num_rows = distance + 11
     num_cols = distance + 11
     shape = (num_rows, num_cols)
@@ -681,7 +688,6 @@ def run_encoded_simulated_fully_corrected(noise_parameter, noise=None):
         + [DIRECTION_UP, DIRECTION_RIGHT] * (distance - 4)
         + reverse_directions(target_dirs["path1"])[:-1]
     )
-    # print(target_dirs["path1"])
     path1_start = get_idx_by_directions(start_idx, start_dirs["path1_start"], shape)
     path1_ids = idx_sequence_by_directions(
         start_idx=path1_start, directions=path1, shape=shape
@@ -820,42 +826,10 @@ def run_encoded_simulated_fully_corrected(noise_parameter, noise=None):
 
     state = strat(state)
 
-    # print("aaaah")
-    # weight_vector = strat.get_weight_vector_expression()
-    # strat.save()
-    # relevant_nodes = [90, 214, 215, 199, 180, 181, 198]
-    # decoding_nodes = [180, 181, 199, 214, 215]
-    # for idx, val in weight_vector.items():
-    #     # if any(i in relevant_nodes for i in idx):
-    #     # # check if there are any weights with 3 components
-    #     # count = 0
-    #     # for node in decoding_nodes:
-    #     #     if node in idx:
-    #     #         count += 1
-    #     # # if count >= 3:
-    #     # if count == 2:
-    #     # if 90 in idx and 198 not in idx:
-    #     if 90 in idx and 198 in idx:
-    #     if any(i in relevant_nodes for i in idx) and 90 not in idx and 198 not in idx:
-    #         print(idx, val)
-
     # error correction rewrites maps
-    # visualize.visualize_2d_cluster_end_state(strat, shape)
-    # quit()
-
     syndrome_indices = list(correction_mapping_dict.values())
     reduced_maps = nsf.reduce_maps(state, [start_idx, target_idx] + syndrome_indices)
     compiled_maps = nsf.compile_maps(*reduced_maps)
-    # print(syndrome_indices, start_idx, target_idx)
-    #
-    # sorted_map = sorted(
-    #     list(zip(compiled_maps.weights, compiled_maps.noises)), reverse=True
-    # )
-    # print(1 - np.sum(compiled_maps.weights))
-    # for weight, noise in sorted_map:
-    #     print(weight, noise)
-    # print("===========")
-    # # error correction rewrites maps
 
     correction_rules = get_correction_rules_cluster_ring_xz_optimized(
         idx_dict=correction_mapping_dict, input_idx=start_idx, output_idx=target_idx
@@ -871,7 +845,6 @@ def run_encoded_simulated_fully_corrected(noise_parameter, noise=None):
             if all(
                 [noise_part in combination for noise_part in filtered_noise]
             ) and all([combination_part in noise for combination_part in combination]):
-                # print("aaaaah")
                 new_noise = list(nsf.add_or_remove(to_flip, tuple(new_noise)))
         for idx in syndrome_indices:
             try:
@@ -879,7 +852,6 @@ def run_encoded_simulated_fully_corrected(noise_parameter, noise=None):
             except ValueError:
                 pass
         new_noise = tuple(new_noise)
-        # print(weight, noise, "mapped to", new_noise)
         updated_weights[new_noise] += weight
 
     weights = []
@@ -1261,31 +1233,6 @@ def run_alternative_encoded(diagonal_distance, noise_parameter):
     for path in [path1_ids, path2_ids, path3_ids, path4_ids, path5_ids]:
         seq += [("x", idx, input_idx) for idx in path]
 
-    # strat = nsf.Strategy(start_graph, seq)
-    # visualize.visualize_2d_cluster_end_state(strat, shape)
-
-    # aux_strat = nsf.Strategy(start_graph, seq)
-    # weight_vector = aux_strat.get_weight_vector_expression()
-    #
-    # interest_set = [84,315,313,271,232,234,255]
-    # interest_set = list(sorted(interest_set))
-    # new_weight_vector = defaultdict(list)
-    #
-    # for k, v in weight_vector.items():
-    #     new_key = tuple()
-    #     for idx in interest_set:
-    #         if idx in k:
-    #             new_key += (idx,)
-    #     if new_key:
-    #         new_weight_vector[new_key] += v
-    #
-    # for k, v in new_weight_vector.items():
-    #     print(k, v)
-    #     if "x_58" in v:
-    #         print("aaaaaah")
-    # aux_strat.save()
-    # visualize.visualize_2d_cluster_end_state(aux_strat, shape)
-
     # do the final measurement
     seq += [
         (
@@ -1303,11 +1250,6 @@ def run_alternative_encoded(diagonal_distance, noise_parameter):
     }
 
     strat = nsf.Strategy(start_graph, seq)
-    # from time import time
-    # start_time = time()
-    # strat.populate_cache()
-    # print(f"{shape[0]*shape[1]} Nodes. With {distance=}. Propagating all noises took {time()-start_time:.2f} seconds.")
-    # strat.save()
 
     p = noise_parameter
     coefficients = [p + (1 - p) / 4, (1 - p) / 4, (1 - p) / 4, (1 - p) / 4]
@@ -1329,8 +1271,6 @@ def run_alternative_encoded(diagonal_distance, noise_parameter):
         target_indices=[input_idx, output_idx],
     )
     fid = np.real_if_close(fidelity(gt.bell_pair_ket, output_rho))[0, 0]
-    # print(fid)
-    # visualize.visualize_2d_cluster_end_state(strat, shape)
     return fid
 
 
