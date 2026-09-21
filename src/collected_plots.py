@@ -7,6 +7,7 @@ from protocol_from_cluster_state import (
     run_direct,
     run_encoded_simulated_fully_corrected,
     run_concatenated,
+    run_concatenated_transport_only,
 )
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -282,7 +283,7 @@ def plot_encoded_transport_variant_2(path_prefix="."):
 
 
 def plot_encoded_transport_both_variants(path_prefix="."):
-    distances = np.arange(6, 128 + 1, 1, dtype=int)
+    distances = np.arange(6, 224 + 1, 1, dtype=int)
     colors = HIGH_CONTRAST_COLORS
 
     mpl.rcParams.update(
@@ -312,6 +313,7 @@ def plot_encoded_transport_both_variants(path_prefix="."):
     plt.legend()
     plt.ylabel("Fidelity")
     plt.xlabel(r"diagonal distance $l$")
+    plt.xlim(0, 210)
     plt.savefig(
         os.path.join(path_prefix, "encoded_vs_direct_by_distance_both_variants.pdf"),
         bbox_inches="tight",
@@ -319,7 +321,7 @@ def plot_encoded_transport_both_variants(path_prefix="."):
     # plt.show()
     plt.cla()
 
-    epsilons = np.logspace(-2, -4, num=40)
+    epsilons = np.logspace(-1.8, -4.2, num=80)
     ps = 1 - epsilons
     distances = [16, 32, 64, 128]
     for dist, color in zip(distances, colors):
@@ -335,7 +337,9 @@ def plot_encoded_transport_both_variants(path_prefix="."):
     plt.ylabel("Fidelity")
     plt.ylim(0.6, 1.025)
     plt.xscale("log")
+    plt.xlim(8e-5, 10 ** (-1.9))
     plt.xlabel(r"error parameter $\varepsilon$")
+
     plt.savefig(
         os.path.join(path_prefix, "encoded_vs_direct_by_error_both_variants.pdf"),
         bbox_inches="tight",
@@ -397,7 +401,7 @@ def plot_uncorrectable(output_path="uncorrectable.pdf"):
 
 
 def plot_chained(path_prefix="."):
-    distances = np.arange(36, 350, 6, dtype=int)
+    distances = np.arange(36, 360 + 1, 6, dtype=int)
     colors = HIGH_CONTRAST_COLORS
 
     mpl.rcParams.update(
@@ -439,6 +443,7 @@ def plot_chained(path_prefix="."):
     plt.legend()
     plt.ylabel("Fidelity")
     plt.xlabel(r"diagonal distance $l$")
+    plt.xlim(25, 355)
     plt.savefig(
         os.path.join(path_prefix, "encoded_chained_by_distance.pdf"),
         bbox_inches="tight",
@@ -502,13 +507,16 @@ def plot_concatenated(path_prefix="."):
     )
 
     diagonal_distance = 24
-    epsilons = np.logspace(0, -3.2, num=80)
+    epsilons = np.logspace(-0.9, -3.2, num=120)
     ps = 1 - epsilons
     concatenation_levels = [0, 1, 2, 3, 4, 5, 6]
     for cl, color in zip(concatenation_levels, colors):
         fids = [
-            run_concatenated(
-                diagonal_distance, noise_parameter=p, concatenation_levels=cl
+            run_concatenated_transport_only(
+                diagonal_distance,
+                noise_parameter=p,
+                concatenation_levels=cl,
+                correction_strategy_outer="standard",
             )
             for p in ps
         ]
@@ -523,7 +531,7 @@ def plot_concatenated(path_prefix="."):
     plt.legend()
     plt.ylabel("Fidelity")
     plt.xlabel(r"error parameter $\varepsilon$")
-    plt.xlim(8e-4, 1)
+    plt.xlim(8e-4, 0.11)
     plt.xscale("log")
     plt.savefig(
         os.path.join(path_prefix, "encoded_concatenated_by_error.pdf"),
@@ -532,13 +540,16 @@ def plot_concatenated(path_prefix="."):
     # plt.show()
     plt.cla()
 
-    distances = np.arange(12, 200, 6, dtype=int)
-    p = 0.995
+    distances = np.arange(12, 252, 1, dtype=int)
+    p = 0.999
     concatenation_levels = [0, 1, 2, 3, 4, 5, 6]
     for cl, color in zip(concatenation_levels, colors):
         fids = [
-            run_concatenated(
-                diagonal_distance, noise_parameter=p, concatenation_levels=cl
+            run_concatenated_transport_only(
+                diagonal_distance,
+                noise_parameter=p,
+                concatenation_levels=cl,
+                correction_strategy_outer="standard",
             )
             for diagonal_distance in distances
         ]
@@ -553,6 +564,7 @@ def plot_concatenated(path_prefix="."):
     plt.legend()
     plt.ylabel("Fidelity")
     plt.xlabel(r"diagonal distance $l$")
+    plt.xlim(0, 250)
     plt.savefig(
         os.path.join(path_prefix, "encoded_concatenated_by_distance.pdf"),
         bbox_inches="tight",
@@ -573,30 +585,41 @@ def plot_concatenated_chained(path_prefix="."):
     )
 
     diagonal_distance = 36 * 6
-    epsilons = np.logspace(0, -3.2, num=80)
+    epsilons = np.logspace(-1.9, -4.2, num=120)
     ps = 1 - epsilons
     concatenation_levels = [0, 1, 2, 3, 4, 5, 6]
     print("Starting calculation on plot_concatenated_chained by errors.")
     for cl, color in zip(concatenation_levels, colors):
         print(f"Working on concatenation level {cl}.")
         y1 = [
-            run_concatenated(
-                diagonal_distance, noise_parameter=p, concatenation_levels=cl
+            run_concatenated_transport_only(
+                diagonal_distance,
+                noise_parameter=p,
+                concatenation_levels=cl,
+                correction_strategy_outer="standard",
             )
             for p in ps
         ]
         y2 = []
         y3 = []
         for p in ps:
-            map2 = run_concatenated(
-                diagonal_distance // 2, p, concatenation_levels=cl, return_map=True
+            map2 = run_concatenated_transport_only(
+                diagonal_distance // 2,
+                p,
+                concatenation_levels=cl,
+                return_map=True,
+                correction_strategy_outer="standard",
             )
             state2 = nsf.State(gt.bipartite_graph, [map2] * 2)
             rho2 = nsf.noisy_bp_dm(state2, [0, 1])
             fid2 = np.real_if_close(fidelity(gt.bell_pair_ket, rho2))[0, 0]
             y2.append(fid2)
-            map3 = run_concatenated(
-                diagonal_distance // 3, p, concatenation_levels=cl, return_map=True
+            map3 = run_concatenated_transport_only(
+                diagonal_distance // 3,
+                p,
+                concatenation_levels=cl,
+                return_map=True,
+                correction_strategy_outer="standard",
             )
             state3 = nsf.State(gt.bipartite_graph, [map3] * 3)
             rho3 = nsf.noisy_bp_dm(state3, [0, 1])
@@ -615,7 +638,7 @@ def plot_concatenated_chained(path_prefix="."):
     plt.legend()
     plt.ylabel("Fidelity")
     plt.xlabel(r"error parameter $\varepsilon$")
-    plt.xlim(8e-4, 1)
+    plt.xlim(8e-5, 0.011)
     plt.xscale("log")
     plt.savefig(
         os.path.join(path_prefix, "encoded_chained_concatenated_by_error.pdf"),
@@ -624,30 +647,41 @@ def plot_concatenated_chained(path_prefix="."):
     # plt.show()
     plt.cla()
 
-    distances = np.arange(36, 300, 6, dtype=int)
-    p = 0.995
+    distances = np.arange(12, 258 + 1, 6, dtype=int)
+    p = 0.998
     concatenation_levels = [0, 1, 2, 3, 4, 5, 6]
     print("Starting calculation on plot_concatenated_chained by distances.")
     for cl, color in zip(concatenation_levels, colors):
         print(f"Working on concatenation level {cl}.")
         y1 = [
-            run_concatenated(
-                diagonal_distance, noise_parameter=p, concatenation_levels=cl
+            run_concatenated_transport_only(
+                diagonal_distance,
+                noise_parameter=p,
+                concatenation_levels=cl,
+                correction_strategy_outer="standard",
             )
             for diagonal_distance in distances
         ]
         y2 = []
         y3 = []
         for diagonal_distance in distances:
-            map2 = run_concatenated(
-                diagonal_distance // 2, p, concatenation_levels=cl, return_map=True
+            map2 = run_concatenated_transport_only(
+                diagonal_distance // 2,
+                p,
+                concatenation_levels=cl,
+                return_map=True,
+                correction_strategy_outer="standard",
             )
             state2 = nsf.State(gt.bipartite_graph, [map2] * 2)
             rho2 = nsf.noisy_bp_dm(state2, [0, 1])
             fid2 = np.real_if_close(fidelity(gt.bell_pair_ket, rho2))[0, 0]
             y2.append(fid2)
-            map3 = run_concatenated(
-                diagonal_distance // 3, p, concatenation_levels=cl, return_map=True
+            map3 = run_concatenated_transport_only(
+                diagonal_distance // 3,
+                p,
+                concatenation_levels=cl,
+                return_map=True,
+                correction_strategy_outer="standard",
             )
             state3 = nsf.State(gt.bipartite_graph, [map3] * 3)
             rho3 = nsf.noisy_bp_dm(state3, [0, 1])
@@ -664,6 +698,7 @@ def plot_concatenated_chained(path_prefix="."):
     )
     plt.grid()
     plt.legend()
+    plt.xlim(0, 250)
     plt.ylabel("Fidelity")
     plt.xlabel(r"diagonal distance $l$")
     plt.savefig(
@@ -758,43 +793,12 @@ def plot_concatenation_strategies(path_prefix="."):
         }
     )
 
-    # diagonal_distance = 24
-    # epsilons = np.logspace(0, -3.2, num=80)
-    # ps = 1 - epsilons
-    # concatenation_levels = [0, 1, 2, 3, 4, 5, 6]
-    # for cl, color in zip(concatenation_levels, colors):
-    #     fids = [
-    #         run_concatenated(
-    #             diagonal_distance, noise_parameter=p, concatenation_levels=cl
-    #         )
-    #         for p in ps
-    #     ]
-    #     plt.plot(epsilons, fids, color=color, label=cl)
-    # plt.plot(
-    #     epsilons,
-    #     [run_simulated_direct(diagonal_distance, p) for p in ps],
-    #     ls="dotted",
-    #     color="gray",
-    # )
-    # plt.grid()
-    # plt.legend()
-    # plt.ylabel("Fidelity")
-    # plt.xlabel(r"error parameter $\varepsilon$")
-    # plt.xlim(8e-4, 1)
-    # plt.xscale("log")
-    # plt.savefig(
-    #     os.path.join(path_prefix, "encoded_concatenated_by_error.pdf"),
-    #     bbox_inches="tight",
-    # )
-    # # plt.show()
-    # plt.cla()
-
     distances = np.arange(12, 200, 6, dtype=int)
-    p = 0.995
+    p = 0.999
     concatenation_levels = [0, 1, 2, 3, 4, 5, 6]
     for cl, color in zip(concatenation_levels, colors):
         y1 = [
-            run_concatenated(
+            run_concatenated_transport_only(
                 diagonal_distance, noise_parameter=p, concatenation_levels=cl
             )
             for diagonal_distance in distances
@@ -802,7 +806,7 @@ def plot_concatenation_strategies(path_prefix="."):
         plt.plot(distances, y1, color=color, label=cl)
 
         y2 = [
-            run_concatenated(
+            run_concatenated_transport_only(
                 diagonal_distance,
                 noise_parameter=p,
                 concatenation_levels=cl,
@@ -813,7 +817,7 @@ def plot_concatenation_strategies(path_prefix="."):
         plt.plot(distances, y2, ls="dashed", color=color)
 
         y3 = [
-            run_concatenated(
+            run_concatenated_transport_only(
                 diagonal_distance,
                 noise_parameter=p,
                 concatenation_levels=cl,
@@ -824,7 +828,7 @@ def plot_concatenation_strategies(path_prefix="."):
         plt.plot(distances, y3, ls="dashdot", color=color)
 
         y4 = [
-            run_concatenated(
+            run_concatenated_transport_only(
                 diagonal_distance,
                 noise_parameter=p,
                 concatenation_levels=cl,
@@ -871,5 +875,3 @@ if __name__ == "__main__":
     plot_reassigning_error_syndromes(path_prefix=plots_directory)
     # plot_concatenation_strategies(path_prefix=plots_directory)
     plot_uncorrectable(output_path=os.path.join(plots_directory, "uncorrectable.pdf"))
-
-    pass

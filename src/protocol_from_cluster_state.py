@@ -954,7 +954,7 @@ def run_direct(diagonal_distance, noise_parameter, save_strategy_plot_path=None)
     return fid
 
 
-def run_simulated_direct(diagonal_distance, noise_parameter):
+def run_simulated_direct(diagonal_distance, noise_parameter, return_map=False):
     distance = diagonal_distance
     graph = nx.Graph([(0, 1)])
     state = nsf.State(graph, maps=[])
@@ -976,6 +976,13 @@ def run_simulated_direct(diagonal_distance, noise_parameter):
     )
 
     fid = np.real_if_close(fidelity(gt.bell_pair_ket, output_rho))[0, 0]
+
+    if return_map:
+        compiled_maps = nsf.compile_maps(*state.maps)
+        bell_pair_map = compiled_maps.as_standard_form()
+        return bell_pair_map
+    else:
+        return fid
     return fid
 
 
@@ -1484,6 +1491,128 @@ def rewrite_output_map_as_paulis(output_map: nsf.Map):
     return pauli_weights
 
 
+def run_concatenated_transport_only(
+    diagonal_distance,
+    noise_parameter,
+    concatenation_levels=1,
+    return_map=False,
+    correction_strategy_inner="xz_optimized",
+    correction_strategy_outer="xz_optimized",
+):
+    p = noise_parameter
+    inner_map = run_simulated_direct(
+        diagonal_distance,
+        noise_parameter,
+        return_map=True,
+    )
+
+    for k in range(concatenation_levels + 1):
+        input_idx = 0
+        output_idx = 16
+        graph = nx.Graph(
+            [(input_idx, i) for i in range(1, 6)]
+            + [(i, i + 1) for i in range(1, 5)]
+            + [(5, 1)]
+            + [(i, output_idx) for i in range(11, 16)]
+            + [(i, i + 1) for i in range(11, 15)]
+            + [(15, 11)]
+        )
+        graph.add_nodes_from([6, 7, 8, 9, 10])
+
+        state = nsf.State(graph, maps=[])
+        # apply noise from previous level
+        inner_weights = rewrite_output_map_as_paulis(inner_map)
+        # hadamard to account for graph-variant
+        inner_weights[1], inner_weights[3] = inner_weights[3], inner_weights[1]
+        state = nsf.pauli_noise(
+            state, indices=[1, 2, 3, 4, 5], coefficients=inner_weights
+        )
+        # print(state)
+
+        # noise from preparation
+        # white noise on all real qubits
+        pauli_weights = [p + (1 - p) / 4, (1 - p) / 4, (1 - p) / 4, (1 - p) / 4]
+        state = nsf.pauli_noise(
+            state,
+            indices=[input_idx, 1, 2, 3, 4, 5, 11, 12, 13, 14, 15, output_idx],
+            coefficients=pauli_weights,
+        )
+        # noise from the preparation y measurements
+        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(1, 5)])
+        state = noise_map(state)
+        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(4, 5)])
+        state = noise_map(state)
+        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(input_idx, 2, 3)])
+        state = noise_map(state)
+        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(11, 15)])
+        state = noise_map(state)
+        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(14, 15)])
+        state = noise_map(state)
+        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(output_idx, 12, 13)])
+        state = noise_map(state)
+
+        # now perform the Bell measurements but in the graph formulation
+        graph = graph.copy()
+        graph.add_edges_from(
+            [(i, i + 5) for i in range(1, 11)]
+        )  # czs do not impact noise
+        # nx.draw(graph, pos=nx.spring_layout(graph), with_labels=True)
+        # plt.show()
+        state = nsf.State(graph, state.maps)
+        seq = (
+            ("x", 1, input_idx),
+            ("x", 6, input_idx),
+            ("x", 2, input_idx),
+            ("x", 7, input_idx),
+            ("x", 3, input_idx),
+            ("x", 8, input_idx),
+            ("x", 4, input_idx),
+            ("x", 9, input_idx),
+            ("x", 5, input_idx),
+            ("x", 10, input_idx),
+            ("x", 11, input_idx),
+        )
+        strat = nsf.Strategy(graph, seq)
+        state = strat(state)
+        strat.save()
+
+        correction_mapping_dict = {2: 12, 3: 13, 4: 14, 5: 15}
+        if k == 0:
+            correction_strategy = correction_strategy_inner
+        else:
+            correction_strategy = correction_strategy_outer
+        new_state = perform_correction(
+            state,
+            correction_mapping_dict,
+            input_idx,
+            output_idx,
+            correction_strategy=correction_strategy,
+        )
+
+        base_map = new_state.maps[0].as_standard_form()
+        # print("base_map", base_map)
+        new_noises = []
+        for noise in base_map.noises:
+            new_noise = []
+            if input_idx in noise:
+                new_noise.append(0)
+            if output_idx in noise:
+                new_noise.append(1)
+            new_noises.append(tuple(new_noise))
+        inner_map = nsf.Map(base_map.weights, new_noises)
+
+    output_state = nsf.State(graph=gt.bipartite_graph, maps=[inner_map])
+
+    output_rho = nsf.noisy_bp_dm(output_state, target_indices=[0, 1])
+
+    fid = np.real_if_close(fidelity(gt.bell_pair_ket, output_rho))[0, 0]
+
+    if return_map:
+        return inner_map  # this is the one from the last iteration
+    else:
+        return fid
+
+
 def run_concatenated(
     diagonal_distance,
     noise_parameter,
@@ -1492,9 +1621,6 @@ def run_concatenated(
     correction_strategy_inner="xz_optimized",
     correction_strategy_outer="xz_optimized",
 ):
-    ## The way the noises are specified in this function recycle results from the modularization.
-    ## For this to make exact sense here would mean having pre-established connections on auxiliary noiseless qubits
-    ## However, luckily this is equivalent to a Bell state measurement in the sense we want
     p = noise_parameter
     inner_map = run_alternative_modularized(
         diagonal_distance,
@@ -1502,61 +1628,78 @@ def run_concatenated(
         return_map=True,
         correction_strategy=correction_strategy_inner,
     )
+
     for k in range(concatenation_levels):
         input_idx = 0
-        output_idx = 6
+        output_idx = 16
         graph = nx.Graph(
             [(input_idx, i) for i in range(1, 6)]
-            + [(i, output_idx) for i in range(1, 6)]
+            + [(i, i + 1) for i in range(1, 5)]
+            + [(5, 1)]
+            + [(i, output_idx) for i in range(11, 16)]
+            + [(i, i + 1) for i in range(11, 15)]
+            + [(15, 11)]
         )
+        graph.add_nodes_from([6, 7, 8, 9, 10])
+
         state = nsf.State(graph, maps=[])
         # apply noise from previous level
         inner_weights = rewrite_output_map_as_paulis(inner_map)
+        # hadamard to account for graph-variant
+        inner_weights[1], inner_weights[3] = inner_weights[3], inner_weights[1]
         state = nsf.pauli_noise(
             state, indices=[1, 2, 3, 4, 5], coefficients=inner_weights
         )
-        # apply weights from outer preparation
-        # first, from the y measurements
-        q = p**2
-        noise_map = nsf.Map(weights=[(1 - q) / 2], noises=[(1, 5)])
+        # print(state)
+
+        # noise from preparation
+        # white noise on all real qubits
+        pauli_weights = [p + (1 - p) / 4, (1 - p) / 4, (1 - p) / 4, (1 - p) / 4]
+        state = nsf.pauli_noise(
+            state,
+            indices=[input_idx, 1, 2, 3, 4, 5, 11, 12, 13, 14, 15, output_idx],
+            coefficients=pauli_weights,
+        )
+        # noise from the preparation y measurements
+        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(1, 5)])
         state = noise_map(state)
-        noise_map = nsf.Map(weights=[(1 - q) / 2], noises=[(4, 5)])
+        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(4, 5)])
         state = noise_map(state)
         noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(input_idx, 2, 3)])
         state = noise_map(state)
-        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(2, 3, output_idx)])
+        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(11, 15)])
+        state = noise_map(state)
+        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(14, 15)])
+        state = noise_map(state)
+        noise_map = nsf.Map(weights=[(1 - p) / 2], noises=[(output_idx, 12, 13)])
         state = noise_map(state)
 
-        # then from the measured "transport", i.e. measuring the 5 qubits from the input state
-        def apply_pattern(state, idx, parity_type, amount, p):
-            if amount == 0:
-                return state
-            q = p**amount
-            weight = (1 - q) / 2
-            if parity_type == "odd":
-                new_state = nsf.z_noise(state, [idx], epsilon=weight)
-            elif parity_type == "even":
-                neighboring_indices = [((idx - 1) + 1) % 5 + 1, ((idx - 1) - 1) % 5 + 1]
-                noise_pattern = (input_idx,) + tuple(neighboring_indices)
-                noise_map = nsf.Map(weights=[weight], noises=[noise_pattern])
-                new_state = noise_map(state)
-            else:
-                raise ValueError(
-                    f"Unknown parity type {parity_type}. Must be odd or even."
-                )
-            return new_state
-
-        for i in [1, 2, 3, 4, 5]:
-            state = apply_pattern(state, i, parity_type="odd", amount=2, p=p)
-
-        # input/output
-        pauli_weights = [p + (1 - p) / 4, (1 - p) / 4, (1 - p) / 4, (1 - p) / 4]
-        state = nsf.pauli_noise(
-            state, indices=[input_idx, output_idx], coefficients=pauli_weights
+        # now perform the Bell measurements but in the graph formulation
+        graph = graph.copy()
+        graph.add_edges_from(
+            [(i, i + 5) for i in range(1, 11)]
+        )  # czs do not impact noise
+        # nx.draw(graph, pos=nx.spring_layout(graph), with_labels=True)
+        # plt.show()
+        state = nsf.State(graph, state.maps)
+        seq = (
+            ("x", 1, input_idx),
+            ("x", 6, input_idx),
+            ("x", 2, input_idx),
+            ("x", 7, input_idx),
+            ("x", 3, input_idx),
+            ("x", 8, input_idx),
+            ("x", 4, input_idx),
+            ("x", 9, input_idx),
+            ("x", 5, input_idx),
+            ("x", 10, input_idx),
+            ("x", 11, input_idx),
         )
+        strat = nsf.Strategy(graph, seq)
+        state = strat(state)
+        strat.save()
 
-        state = nsf.x_measurement(state, index=1, b0=input_idx)
-        correction_mapping_dict = {2: 2, 3: 3, 4: 4, 5: 5}
+        correction_mapping_dict = {2: 12, 3: 13, 4: 14, 5: 15}
         new_state = perform_correction(
             state,
             correction_mapping_dict,
